@@ -1,0 +1,555 @@
+;(function($){
+	
+	var Carousel = function(poster){
+		var self = this;
+
+		this.poster = poster;//poster当做是一个属性
+		this.posterItemMain = poster.find("ul.poster-list");//标签.类名
+		this.nextBtn = poster.find("div.poster-next-btn");
+		this.prevBtn = poster.find("div.poster-prev-btn");
+
+		this.posterItems = poster.find("li.poster-item");
+
+		//3.假如有偶数帧
+		if(this.posterItems.size()%2==0){
+			this.posterItemMain.append(this.posterItems.eq(0).clone());
+			this.posterItems = this.posterItemMain.children();
+		};//不得不写得这么复杂
+
+
+		this.posterFirstItem = this.posterItems.first();
+		this.posterLastItem = this.posterItems.last();
+
+		this.rotateFlag = true;//防止动画没完成的时候又产生新的事件，导致有问题
+		
+
+
+		 //默认配置参数
+		 this.setting = {//setting当做是被创建的一个属性，它的值是一个JSON对象
+		 	"width":1000,	//幻灯片的宽度
+            "height":270,	//幻灯片的高度
+            "posterWidth":640,//幻灯片第一帧的宽度
+            "posterHeight":270,//幻灯片第一帧的高度
+
+            "scale":0.9,
+          	"verticalAlign":"middle",//top bottom
+          	"autoPlay":false,
+          	"delay":5000,
+            "speed":500
+		 };
+		 
+		$.extend(this.setting,this.getSetting());//后面的参数会覆盖前面的参数，第一个参数就会被改变，同时以第一个参数作为返回
+		//上面过程就是在得到一个修正后的this.setting
+
+		//设置配置参数值
+		this.setSettingValue();
+		this.setPosterPos();
+
+		this.nextBtn.click(function(){
+			if(self.rotateFlag){
+				self.rotateFlag=false;
+				self.carouseRotate("left");
+			}
+			
+		});
+		this.prevBtn.click(function(){
+			if(self.rotateFlag){
+				self.rotateFlag=false;
+				self.carouseRotate("right");
+			}
+		});
+
+		//3.是否开启自动播放
+		if(this.setting.autoPlay){
+			this.autoPlay();
+			this.poster.hover(function(){
+				//鼠标移上来			
+				window.clearInterval(self.timer);
+
+			},function(){
+				//鼠标移开
+				self.autoPlay();
+			});
+		
+
+		};
+
+
+	};
+	Carousel.prototype = {
+		autoPlay:function(){
+			var self = this;
+			//定义一个全局的timer
+			this.timer = window.setInterval(function(){
+				self.nextBtn.click();
+			},this.setting.delay);
+		},
+
+
+
+		//旋转
+		carouseRotate:function(dir){
+			var _this_ = this;
+			var zIndexArr=[];//就是想让zIndex过渡自然一点，储存每次的中间变量
+
+			if(dir==="left"){
+				this.posterItems.each(function(){
+					var self = $(this),//self是一个JQ对象，帮助拿到值
+						prev = self.prev().get(0)?self.prev():_this_.posterLastItem,//这里的this代表Carousel.posterItems;_this_代表Carousel
+						//get(0)只是为了将JQ转化为JS的DOM对象
+						width = prev.width(),
+						height= prev.height(),
+						zIndex = prev.css("zIndex"),
+						opacity = prev.css("opacity"),
+						left = prev.css("left"),
+						top = prev.css("top");
+
+
+						zIndexArr.push(zIndex);
+
+						self.animate({
+							width:width,
+							height:height,
+							//zIndex:zIndex,
+							opacity:opacity,
+							left:left,
+							top:top
+						},_this_.setting.speed,function(){
+							_this_.rotateFlag=true;
+						});
+				});
+				this.posterItems.each(function(i){
+					$(this).css("zIndex",zIndexArr[i]);
+				});
+
+			}else if(dir==="right"){
+				this.posterItems.each(function(){
+					var self = $(this),
+						next = self.next().get(0)?self.next():_this_.posterFirstItem,
+						width = next.width(),
+						height= next.height(),
+						zIndex = next.css("zIndex"),
+						opacity = next.css("opacity"),
+						left = next.css("left"),
+						top = next.css("top");
+
+						zIndexArr.push(zIndex);
+						
+						self.animate({
+							width:width,
+							height:height,
+							//zIndex:zIndex,
+							opacity:opacity,
+							left:left,
+							top:top
+						},_this_.setting.speed,function(){
+							_this_.rotateFlag=true;
+						});
+				});
+				this.posterItems.each(function(i){
+					$(this).css("zIndex",zIndexArr[i]);
+				});
+
+			}
+			
+		},
+
+
+
+
+		//设置除了第一帧外其他帧的位置关系
+		setPosterPos:function(){
+			var self = this;//有啥用？防止漂移？？
+			var sliceItems = this.posterItems.slice(1),//已经当做是奇数了
+			sliceSize = sliceItems.size()/2,
+			rightSlice = sliceItems.slice(0,sliceSize),
+			level	 = Math.floor(this.posterItems.size()/2);
+
+			leftSlice = sliceItems.slice(sliceSize);
+
+
+			//设置右边帧的位置关系和宽度高度top	
+			var rw = this.setting.posterWidth,
+				rh = this.setting.posterHeight,
+				gap = ((this.setting.width-this.setting.posterWidth)/2)/level;
+		
+			var firstLeft = (this.setting.width-this.setting.posterWidth)/2;
+			var fixOffsetLeft = firstLeft+rw;//??
+			rightSlice.each(function(i){
+				level--;
+				rw = rw*self.setting.scale;
+				rh = rh*self.setting.scale;
+
+				var j=i;
+				$(this).css({
+					zIndex:level,
+					width:rw,
+					height:rh,
+					opacity:1/(++i),
+					left:fixOffsetLeft+(++j)*gap-rw,//此rw已经不是fixOffsetLeft中的rw了
+					//top:(self.setting.height-rh)/2 仍居中
+					top:self.setVerticalAlign(rh)
+				});
+			});	
+
+			//设置左边帧的位置关系和宽度高度top	
+			var lw = rightSlice.last().width(),////原来这个是jQuery CSS 操作 - width() 方法
+				lh = rightSlice.last().height(),
+				oloop = Math.floor(this.posterItems.size()/2);//因为它在上面被改变了，所以用oloop再保存一遍
+				
+			leftSlice.each(function(i){
+		
+
+				// var j=i;
+				$(this).css({
+					//zIndex:level,
+					zIndex:i,
+					width:lw,
+					height:lh,
+					opacity:1/oloop,
+					left:i*gap,
+					//top:(self.setting.height-lh)/2
+					top:self.setVerticalAlign(lh)
+
+				});
+				lw = lw/self.setting.scale;
+				lh = lh/self.setting.scale;
+				oloop--;
+			});	
+		},
+
+		//设置垂直排列对齐
+		setVerticalAlign:function(height){
+			var verticalType = this.setting.verticalAlign,
+				top=0;
+			if (verticalType==="middle") {
+				top = (this.setting.height-height)/2;
+			}else if(verticalType==="top"){
+				top=0;
+			}else if(verticalType==="bottom"){
+				top = this.setting.height-height;
+			}else{
+				top = (this.setting.height-height)/2;
+			}
+
+			return top;
+		},
+
+		//设置配置参数值去控制基本的宽度高度...
+		setSettingValue:function(){
+			this.poster.css({
+				width:this.setting.width,
+				height:this.setting.height,
+			});
+			this.posterItemMain.css({//想让它这么宽这么高，它的父标签poster至少也这么宽这么高
+				width:this.setting.width,
+				height:this.setting.height,
+			});
+
+			//切换上下切换按钮的宽度
+			var w =  (this.setting.width-this.setting.posterWidth)/2;
+
+			this.nextBtn.css({
+				width:w,
+				height:this.setting.height,
+
+				zIndex:Math.ceil(this.posterItems.size()/2)
+			});
+			this.prevBtn.css({
+				width:w,
+				height:this.setting.height,
+
+				zIndex:Math.ceil(this.posterItems.size()/2)
+			});
+			this.posterFirstItem.css({
+				width:this.setting.posterWidth,
+				height:this.setting.posterHeight,
+				left:w,
+
+				zIndex:Math.floor(this.posterItems.size()/2)
+			});
+
+		},//这是个逗号
+
+
+		//获取人工配置参数
+		getSetting:function(){
+			var setting = this.poster.attr("data-setting");//拿到以JSON为内容的字符串
+			if(setting&&setting!=""){//存在且非空
+				return $.parseJSON(setting);//将该字符串转化为JSON对象，方便引用
+			}else{
+				return{};//大概知道意思，但是不知道是不是这么写？？
+				//觉得这句写成return setting不是更好？？
+			};
+			
+			//return setting;
+		}
+	};//查表
+	//因为它是一个闭包，初始化之后是没有办法访问到这个类的:
+
+	Carousel.init = function(posters){
+		//但是作为集合的对象来处理是很不方便的
+		//所以有几个DOM节点就要new几次
+
+		var _this_ = this;//_this_就指的是第3行的Carousel类，后两行new的时候它的对象才被创建
+		posters.each(function(){
+			new _this_($(this));//this只是一个oject对象，所以要包装成JQ对象
+			//this代表的是集合中的每一个元素
+			// var carousel2 = new Carousel($(".J_Poster").eq(1));
+			//posters.里面的this 和 Carousel.里面的this不同？？
+		});
+	};
+
+	window["Carousel"] = Carousel;//全局注册
+	//因为它是一个闭包，所以index.html的Carousel.init($(".J_Poster"))就访问不到Carousel，所以需要全局注册
+})(jQuery);
+
+
+
+
+
+// ;(function($){
+
+// 	var Carousel = function(poster){
+// 			var self = this;
+// 			//保存单个旋转木马对象
+// 			this.poster                  = poster;
+// 			this.posterItemMain = poster.find("ul.poster-list");
+// 			this.nextBtn               = poster.find("div.poster-next-btn");
+// 			this.prevBtn               = poster.find("div.poster-prev-btn");
+// 			this.posterItems        =poster.find("li.poster-item");
+// 			if(this.posterItems.size()%2==0){
+// 				this.posterItemMain.append(this.posterItems.eq(0).clone());
+// 				this.posterItems = this.posterItemMain.children();
+// 			};
+// 			this.posterFirstItem  = this.posterItems.first();
+// 			this.posterLastItem  = this.posterItems.last();
+// 			this.rotateFlag   = true;
+// 			//默认配置参数
+// 			this.setting = {
+// 									"width":1000,			//幻灯片的宽度
+// 									"height":270,				//幻灯片的高度
+// 									"posterWidth":640,	//幻灯片第一帧的宽度
+// 									"posterHeight":270,	//幻灯片第一帧的高度
+// 									"scale":0.9,					//记录显示比例关系
+// 									"speed":500,
+// 									"autoPlay":false,
+// 									"delay":5000,
+// 									"verticalAlign":"middle" //top bottom
+// 									};
+// 			$.extend(this.setting,this.getSetting());
+			
+// 			//设置配置参数值
+// 			this.setSettingValue();
+// 			this.setPosterPos();
+// 			//左旋转按钮
+// 			this.nextBtn .click(function(){
+// 				if(self.rotateFlag){
+// 					self.rotateFlag = false;
+// 					self.carouseRotate("left");
+// 				};
+// 			});
+// 			//右旋转按钮
+// 			this.prevBtn .click(function(){
+// 				if(self.rotateFlag){
+// 					self.rotateFlag = false;
+// 					self.carouseRotate("right");
+// 				};
+// 			});
+// 		//是否开启自动播放
+// 		if(this.setting.autoPlay){
+// 			this.autoPlay();
+// 			this.poster.hover(function(){
+// 										window.clearInterval(self.timer);
+// 										},function(){
+// 										self.autoPlay();
+// 										});
+			
+// 		};
+
+// 	};
+// 	Carousel.prototype = {
+// 		autoPlay:function(){
+// 			var self = this;
+// 			this.timer = window.setInterval(function(){
+// 				self.nextBtn.click();
+// 			},this.setting.delay);
+
+// 		},
+
+// 		//旋转
+// 		carouseRotate:function(dir){
+// 			var _this_  = this;
+// 			var zIndexArr = [];
+// 			//左旋转
+// 			if(dir === "left"){
+// 				this.posterItems .each(function(){
+// 					var self = $(this),
+// 						   prev = self.prev().get(0)?self.prev():_this_.posterLastItem,
+// 						   width = prev.width(),
+// 						   height =prev.height(),
+// 						   zIndex = prev.css("zIndex"),
+// 						   opacity = prev.css("opacity"),
+// 						   left = prev.css("left"),
+// 						   top = prev.css("top");
+// 							zIndexArr.push(zIndex);	
+// 						   self.animate({
+// 							   					width:width,
+// 												height:height,
+// 												//zIndex:zIndex,
+// 												opacity:opacity,
+// 												left:left,
+// 												top:top
+// 												},_this_.setting.speed,function(){
+// 													_this_.rotateFlag = true;
+// 												});
+// 				});
+// 				//zIndex需要单独保存再设置，防止循环时候设置再取的时候值永远是最后一个的zindex
+// 				this.posterItems.each(function(i){
+// 					$(this).css("zIndex",zIndexArr[i]);
+// 				});
+// 			}else if(dir === "right"){//右旋转
+// 				this.posterItems .each(function(){
+// 					var self = $(this),
+// 						   next = self.next().get(0)?self.next():_this_.posterFirstItem,
+// 						   width = next.width(),
+// 						   height =next.height(),
+// 						   zIndex = next.css("zIndex"),
+// 						   opacity = next.css("opacity"),
+// 						   left = next.css("left"),
+// 						   top = next.css("top");
+// 						   zIndexArr.push(zIndex);	
+// 						   self.animate({
+// 							   					width:width,
+// 												height:height,
+// 												//zIndex:zIndex,
+// 												opacity:opacity,
+// 												left:left,
+// 												top:top
+// 												},_this_.setting.speed,function(){
+// 													_this_.rotateFlag = true;
+// 												});
+	
+// 				});
+// 				//zIndex需要单独保存再设置，防止循环时候设置再取的时候值永远是最后一个的zindex
+// 				this.posterItems.each(function(i){
+// 					$(this).css("zIndex",zIndexArr[i]);
+// 				});
+// 			};
+// 		},
+// 		//设置剩余的帧的位置关系
+// 		setPosterPos:function(){
+// 				var   self = this;
+// 				var 	sliceItems  = this.posterItems.slice(1),
+// 						sliceSize     = sliceItems.size()/2,
+// 						rightSlice   = sliceItems.slice(0,sliceSize),
+// 						level            = Math.floor(this.posterItems.size()/2),
+// 						leftSlice      =sliceItems.slice(sliceSize);
+			
+// 				//设置右边帧的位置关系和宽度高度top
+// 				var rw = this.setting.posterWidth,
+// 					   rh  = this.setting.posterHeight,
+// 					   gap = ((this.setting.width-this.setting.posterWidth)/2)/level;
+				
+// 				var firstLeft = (this.setting.width-this.setting.posterWidth)/2;
+// 				var fixOffsetLeft = firstLeft+rw;
+// 				//设置左边位置关系
+// 				rightSlice.each(function(i){
+// 					level--;
+// 					rw = rw *self.setting.scale;
+// 					rh = rh *self.setting.scale
+// 					var j = i;
+// 					$(this).css({
+// 										zIndex:level,
+// 										width:rw,
+// 										height:rh,
+// 										opacity:1/(++j),
+// 										left:fixOffsetLeft+(++i)*gap-rw,
+// 										top:self.setVerticalAlign(rh)
+// 										});
+// 				});
+// 				//设置左边的位置关系
+// 				var lw = rightSlice.last().width(),
+// 					   lh  =rightSlice.last().height(),
+// 					   oloop = Math.floor(this.posterItems.size()/2);
+// 				leftSlice.each(function(i){
+// 					$(this).css({
+// 										zIndex:i,
+// 										width:lw,
+// 										height:lh,
+// 										opacity:1/oloop,
+// 										left:i*gap,
+// 										top:self.setVerticalAlign(lh)
+// 										});
+// 					lw = lw/self.setting.scale;
+// 					lh = lh/self.setting.scale;
+// 					oloop--;
+// 				});
+// 		},
+// 		//设置垂直排列对齐
+// 		setVerticalAlign:function(height){
+// 			var verticalType  = this.setting.verticalAlign,
+// 					top = 0;
+// 			if(verticalType === "middle"){
+// 				top = (this.setting.height-height)/2;
+// 			}else if(verticalType === "top"){
+// 				top = 0;
+// 			}else if(verticalType === "bottom"){
+// 				top = this.setting.height-height;
+// 			}else{
+// 				top = (this.setting.height-height)/2;
+// 			};
+// 			return top;
+// 		},
+// 		//设置配置参数值去控制基本的宽度高度。。。
+// 		setSettingValue:function(){
+// 			this.poster.css({
+// 										width:this.setting.width,
+// 										height:this.setting.height
+// 									});
+// 			this.posterItemMain.css({
+// 										width:this.setting.width,
+// 										height:this.setting.height
+// 									});
+// 			//计算上下切换按钮的宽度
+// 			var w = (this.setting.width-this.setting.posterWidth)/2;
+// 			//设置切换按钮的宽高，层级关系
+// 			this.nextBtn.css({
+// 										width:w,
+// 										height:this.setting.height,
+// 										zIndex:Math.ceil(this.posterItems.size()/2)
+// 										});
+// 			this.prevBtn.css({
+// 										width:w,
+// 										height:this.setting.height,
+// 										zIndex:Math.ceil(this.posterItems.size()/2)
+// 										});
+			
+// 			this.posterFirstItem.css({
+// 										width:this.setting.posterWidth,
+// 										height:this.setting.posterHeight,
+// 										left:w,
+// 										top:0,
+// 										zIndex:Math.floor(this.posterItems.size()/2)
+// 										});
+// 		},
+// 		//获取人工配置参数
+// 		getSetting:function(){
+			
+// 			var setting = this.poster.attr("data-setting");
+// 			if(setting&&setting!=""){
+// 				return $.parseJSON(setting);
+// 			}else{
+// 				return {};
+// 			};
+// 		}
+	
+// 	};
+// 	Carousel.init = function(posters){
+// 		var _this_ = this;
+// 		posters.each(function(){
+// 			new  _this_($(this));
+// 		});
+// 	};
+// 	window["Carousel"] = Carousel;
+// })(jQuery);

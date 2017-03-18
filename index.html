@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>旋转木马 幻灯片开发</title>
+	<link rel="stylesheet" type="text/css" href="carousel.css">
+
+	<script type="text/javascript" src="jquery.js"></script>
+	<script type="text/javascript" src="3carousel.js"></script>	
+</head>
+<body style="padding:50px;">
+
+<div class="J_Poster poster-main" data-setting='{
+                "width":1000,
+                "height":270,
+                "posterWidth":640,
+                "posterHeight":270,
+                "scale":0.8,
+                "autoPlay":true,
+                "delay":2000,
+                "speed":300
+												}'>
+				<!-- 根据JSON，键值对左边的“键”都要加双引号 -->
+
+	<div class="poster-btn poster-prev-btn"></div>
+	<ul class="poster-list">
+	    <li class="poster-item"><a href="#"><img src="image/1.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/2.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/3.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/4.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/5.jpg" width="100%"/></a></li>
+ 	    <li class="poster-item"><a href="#"><img src="image/2.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/3.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/4.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/5.jpg" width="100%"/></a></li>
+	</ul>
+	<div class="poster-btn poster-next-btn"></div>
+</div>
+
+<p style="height: 50px;"></p>
+<div class="J_Poster poster-main" data-setting='{
+                "width":800,
+                "height":270,
+                "posterWidth":640,
+                "posterHeight":270,
+                "scale":0.8,
+                "autoPlay":true,
+                "delay":5000,
+                "speed":300,
+                "veticalAlign":"top"
+												}'>
+				<!-- 根据JSON，键值对左边的“键”都要加双引号 -->
+
+	<div class="poster-btn poster-prev-btn"></div>
+	<ul class="poster-list">
+	    <li class="poster-item"><a href="#"><img src="image/1.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/2.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/3.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/4.jpg" width="100%"/></a></li>
+	    <li class="poster-item"><a href="#"><img src="image/5.jpg" width="100%"/></a></li>
+ 	    
+	</ul>
+	<div class="poster-btn poster-next-btn"></div>
+</div>
+
+<script>
+//这个script和前面的两个scripit的顺序有关
+	$(function(){
+		//Carousel
+		// var carousel1 = new Carousel($(".J_Poster").eq(0));
+		// var carousel2 = new Carousel($(".J_Poster").eq(1));
+		
+
+		//var setting = {
+		//	width:1000,
+		//	height:270,//其实就是图片的高度，但是不应该获取图片的高度再加载，因为不要等到图片加载完了再加载
+		//	posterWidth:640,
+		//	posterHeight:270,//此行可注释掉
+
+		//	scale:0.9,
+		//	speed:500,
+		//	verticalAlign:"middle"
+
+		//};//配置参数
+		Carousel.init($(".J_Poster"));//作为一个集合（集合了所有类名为J_Posterd的DOM对象）传过去，这样比较方便一点
+	});
+	
+</script>
+
+
+
+
+</body>
+</html>
